@@ -1,0 +1,16 @@
+{
+  "isSuccess": true, 
+  "message": "success", 
+  "data": {
+    "id": 1,
+    "playerUid": "",
+    "playerName": "",
+    "playerImageUrl": "",
+    "senderUid": "",
+    "senderName": "",
+    "senderImageUrl": "",
+    "sendStatus": "",
+    "createTime": "2019-12-12 14:04:18",
+    "updateTime": "2019-12-12 14:05:56" 
+    }
+  }
