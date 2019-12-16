@@ -35,10 +35,16 @@ const ItemCtrl = (function() {
     },
     // 直接純一個卡片的樣式字串，等到要用的時候，直接裝
     setCardItem (cardItems) {
-      let html = ''
+      // set Start data
+      let html = '<li class="card__img__item current" style="background-image:url(\'https://hpiuatdiag.blob.core.windows.net/upload/6296bd82-71de-444c-9a6c-57378bc2b77a.png\')"></li>'
+      data.allPrize.push({uid: '0', name: ''})
+
+      // set item from cardItems
       cardItems.forEach((item, index) => {
+        // 第一版
         // 圖片樣式：第一筆是current / 最後一筆是out / 其餘是 in
-        let cardStatus = index === 0 ? 'current' : (index === (cardItems.length - 1) ? 'out' : 'in')
+        // let cardStatus = index === 0 ? 'current' : (index === (cardItems.length - 1) ? 'out' : 'in')
+        let cardStatus = index === (cardItems.length - 1) ? 'out' : 'in'
         html += `<li class="card__img__item ${cardStatus}" style="background-image:url(${item.imageUrl})"></li>`
         // modify data and set all prize
         data.allPrize.push({
@@ -163,7 +169,6 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
   const getProfile = function () {
     return new Promise ((resolve, reject) => {
       liff.getProfile().then(function(profile) {
-        console.log(profile)
         ItemCtrl.setUserProfile(profile)
         resolve(profile)
       }).catch(function(error) {
@@ -176,7 +181,7 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
     try {
       liff.sendMessages([{
         'type': 'text',
-        'text': `Hey!!! (party popper)恭喜你抽中【${name}】 的禮物，希望這不是個狼坑，快去禮物堆中把他領回吧！`
+        'text': `Hey!!! 🎉恭喜你抽中【${name}】 的禮物，希望這不是個狼坑，快去禮物堆中把他領回吧！`
       }]).then(function() {
         console.log('Message sent')
       }).catch(function(error) {
@@ -184,6 +189,23 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
       })
     } catch (error) {
     }
+  }
+  // [LINE]: push message
+  const sentMessage = function (uid) {
+    let url = `${domain}${ItemCtrl.getUrlData().sendMsg}`
+
+    fetch(url,{
+      method: 'POST',
+      body: JSON.stringify({uid}),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(res => {
+      return res.json()
+    }).then(data => {
+      // console.log(data)
+    }).catch(e => {
+    })
   }
   /**
    * 是否有資格玩這個遊戲 / table是否有這人
@@ -212,6 +234,13 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
   const fireGameAction = function () {
     // call Api 取獎項
     let url = `${domain}${ItemCtrl.getUrlData().fireGame}`
+
+    // 把卡片資訊帶入頁面
+    UICtrl.changingLoading(true, ItemCtrl.getData().html__itemCards)
+
+    // show loading Msg
+    document.querySelector(UICtrl.getSelectors().cardTitle).innerText = '準備開始囉！'
+
     fetch(url, {
       method: 'POST',
       body: JSON.stringify({
@@ -227,26 +256,18 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
         // 存獎項資訊
         ItemCtrl.setPlayerPrize(data)
 
-        // 把卡片資訊帶入頁面
-        UICtrl.changingLoading(true, ItemCtrl.getData().html__itemCards)
-        
-        // 文字改變
-        document.querySelector(UICtrl.getSelectors().cardTitle).innerText = '準備要開始抽囉！'
-        setTimeout(() => {
-          document.querySelector(UICtrl.getSelectors().cardTitle).innerText = '您抽到的是..'
-        }, 1100)
+        // change Title
+        document.querySelector(UICtrl.getSelectors().cardTitle).innerText = '您抽到的是...'
 
         // SetTimeOut 啟動抽卡
         setTimeout(() => {
-          ItemCtrl.getData().interval = setInterval(nextCard, 200)
+          ItemCtrl.getData().interval = setInterval(nextCard, 300)
         }, 1000)
 
       })
       .catch(e => {
-        UICtrl.showAlertMessage('fail')
+        UICtrl.showAlertMessage('發生異常！')
       })
-
-    // nextCard()
   }
   // 下一張卡片
   const nextCard = function () {
@@ -264,8 +285,14 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
     // 增加計數器
     ItemCtrl.updateCount(currentCount + 1)
     if (currentCount > Math.floor(minCount * Math.random()) && matchCard) {
+      // 清除interval
       clearInterval(ItemCtrl.getData().interval)
+      // 發送訊息
+      sentMessage(ItemCtrl.getData().userProfile.uid)
+      // 吐出訊息
       liffSendMesaage(ItemCtrl.getData().playersPrize.name)
+      // 關閉liff
+      setTimeout(() => { liffClose() }, 1500)
     }
 
     // 調整目前current 值
@@ -277,7 +304,11 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
     }
   }
   const liffClose = function () {
-    liff.closeWindow()
+    try {
+      liff.closeWindow()
+    } catch (error) {
+    }
+    
   }
   /**
    * 報名聖誕節活動
@@ -297,9 +328,7 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
       }).then(data => {
         if (data.isSuccess) {
           UICtrl.showAlertMessage('報名成功')
-          try {
-            setTimeout(() => { liffClose() }, 500) 
-          } catch (error) {}
+          setTimeout(() => { liffClose() }, 1500)
         } else {
           UICtrl.showAlertMessage('報名失敗')
         }
@@ -315,7 +344,7 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
      */
     init (page, id) {
       // clear localstorage
-     localStorage.clear()
+      // localStorage.clear()
 
       // Set LIFF ID
       ItemCtrl.setLIFFId(id)
@@ -346,14 +375,17 @@ const AppCtrl = (function (UICtrl, ItemCtrl) {
             if (page === 'game') {
               // call uid 是否有資格玩遊戲
               if (!info.isSuccess) {
-                UICtrl.showAlertMessage(info.data)
+                if (info.data.playerUid) {
+                  UICtrl.showAlertMessage(`快去找${info.data.senderName}<br/>拿禮物吧 :)`, info.data.senderImageUrl)
+                } else {
+                  UICtrl.showAlertMessage(info.data)
+                }
               } else {
                 // SetItem 到卡片
                 ItemCtrl.setCardItem(info.data)
               }
             } else if (page === 'reservation') {
               // 報名
-              console.log(info)
               if (info.isSuccess) {
                 UICtrl.showAlertMessage('你已經報名過惹！')
               }
